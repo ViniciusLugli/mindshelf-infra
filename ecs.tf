@@ -8,8 +8,8 @@ resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = var.backend_task_cpu
+  memory                   = var.backend_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
 
@@ -19,7 +19,7 @@ resource "aws_ecs_task_definition" "backend" {
     essential = true
 
     portMappings = [{
-      containerPort = 8080
+      containerPort = var.backend_port
       protocol      = "tcp"
     }]
 
@@ -64,9 +64,16 @@ resource "aws_ecs_service" "backend" {
   name            = "${var.project_name}-backend"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = 1
+  desired_count   = var.backend_desired_count
   launch_type     = "FARGATE"
   depends_on      = [aws_lb_listener.https]
+
+  health_check_grace_period_seconds = 120
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
 
   network_configuration {
     subnets          = module.vpc.private_subnets # containers ficam na subnet privada
@@ -87,8 +94,8 @@ resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-frontend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = var.frontend_task_cpu
+  memory                   = var.frontend_task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
@@ -126,7 +133,7 @@ resource "aws_ecs_service" "frontend" {
   name            = "${var.project_name}-frontend"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
+  desired_count   = var.frontend_desired_count
   launch_type     = "FARGATE"
   depends_on      = [aws_lb_listener.https]
 

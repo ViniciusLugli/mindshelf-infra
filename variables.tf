@@ -24,8 +24,44 @@ variable "backend_port" {
   default = 8080
 }
 
+variable "backend_task_cpu" {
+  description = "CPU units para task do backend no ECS Fargate"
+  type        = number
+  default     = 512
+}
+
+variable "backend_task_memory" {
+  description = "Memoria (MiB) para task do backend no ECS Fargate"
+  type        = number
+  default     = 1024
+}
+
+variable "backend_desired_count" {
+  description = "Quantidade desejada de tasks do backend"
+  type        = number
+  default     = 1
+}
+
 variable "frontend_port" {
   default = 3000
+}
+
+variable "frontend_task_cpu" {
+  description = "CPU units para task do frontend no ECS Fargate"
+  type        = number
+  default     = 256
+}
+
+variable "frontend_task_memory" {
+  description = "Memoria (MiB) para task do frontend no ECS Fargate"
+  type        = number
+  default     = 512
+}
+
+variable "frontend_desired_count" {
+  description = "Quantidade desejada de tasks do frontend"
+  type        = number
+  default     = 1
 }
 
 variable "backend_log_level" {
