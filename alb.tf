@@ -157,7 +157,7 @@ resource "aws_lb_listener" "https" {
 
 # ─── REGRAS DE ROTEAMENTO ──────────────────────────────
 
-# /api/* → backend
+# api.dominio → backend
 resource "aws_lb_listener_rule" "backend_https" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 100
@@ -168,8 +168,8 @@ resource "aws_lb_listener_rule" "backend_https" {
   }
 
   condition {
-    path_pattern {
-      values = ["/api/*"]
+    host_header {
+      values = ["api.${var.domain_name}"]
     }
   }
 }

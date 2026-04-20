@@ -26,7 +26,9 @@ resource "aws_ecs_task_definition" "backend" {
     environment = [
       { name = "NODE_ENV", value = "production" },
       { name = "LOG_LEVEL", value = var.backend_log_level },
-      { name = "ALLOWED_ORIGINS", value = coalesce(var.backend_allowed_origins, "https://${var.domain_name}") }
+      { name = "ALLOWED_ORIGINS", value = coalesce(var.backend_allowed_origins, "https://${var.domain_name},https://www.${var.domain_name}") },
+      { name = "COOKIE_DOMAIN", value = ".${var.domain_name}" },
+      { name = "COOKIE_SECURE", value = "true" }
     ]
 
     secrets = [
@@ -109,7 +111,7 @@ resource "aws_ecs_task_definition" "frontend" {
     }]
 
     environment = [
-      { name = "API_PROXY_TARGET", value = "http://${aws_lb.main.dns_name}/api" },
+      { name = "API_ORIGIN", value = "https://api.${var.domain_name}" },
       { name = "NEXT_PUBLIC_WS_PATH", value = "/api/ws" }
     ]
 
@@ -136,6 +138,13 @@ resource "aws_ecs_service" "frontend" {
   desired_count   = var.frontend_desired_count
   launch_type     = "FARGATE"
   depends_on      = [aws_lb_listener.https]
+
+  health_check_grace_period_seconds = 60
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
 
   network_configuration {
     subnets         = module.vpc.private_subnets

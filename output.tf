@@ -8,6 +8,11 @@ output "site_url" {
   value       = "https://${var.domain_name}"
 }
 
+output "api_url" {
+  description = "URL publica da API"
+  value       = "https://api.${var.domain_name}"
+}
+
 output "ecr_backend_url" {
   description = "URL do repositório ECR do backend"
   value       = aws_ecr_repository.backend.repository_url
