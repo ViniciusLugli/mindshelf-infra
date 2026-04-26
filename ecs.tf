@@ -78,9 +78,9 @@ resource "aws_ecs_service" "backend" {
   }
 
   network_configuration {
-    subnets          = module.vpc.private_subnets # containers ficam na subnet privada
+    subnets          = module.vpc.public_subnets
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -147,8 +147,9 @@ resource "aws_ecs_service" "frontend" {
   }
 
   network_configuration {
-    subnets         = module.vpc.private_subnets
-    security_groups = [aws_security_group.ecs_tasks.id]
+    subnets          = module.vpc.public_subnets
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = true
   }
 
   load_balancer {

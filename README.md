@@ -8,7 +8,7 @@ O projeto provisiona rede, balanceamento, containers, banco de dados, DNS, certi
 
 Esta stack cria os seguintes componentes na AWS:
 
-- **VPC** com 2 subnets publicas, 2 subnets privadas e NAT Gateway.
+- **VPC** com 2 subnets publicas e 2 subnets privadas, sem NAT Gateway.
 - **Application Load Balancer (ALB)** com HTTP redirecionando para HTTPS.
 - **Roteamento por caminho**: frontend como rota padrao e backend atendendo `/api/*`.
 - **ECS Fargate** para frontend e backend, cada um com task definition e service proprios.
@@ -66,9 +66,9 @@ O projeto cria uma VPC com CIDR `10.0.0.0/16`, duas zonas de disponibilidade e a
 
 - `10.0.1.0/24` e `10.0.2.0/24`: subnets publicas.
 - `10.0.3.0/24` e `10.0.4.0/24`: subnets privadas.
-- `single_nat_gateway = true`: apenas um NAT Gateway para reduzir custo.
+- `enable_nat_gateway = false`: sem NAT Gateway para reduzir custo fixo.
 
-Isso permite que o ALB fique exposto publicamente e que ECS/RDS permaneçam em subnets privadas.
+Isso permite que o ALB fique exposto publicamente, que as tasks do ECS usem IP publico para saida e que o RDS permaneca privado.
 
 ### Balanceamento e roteamento
 
@@ -86,7 +86,7 @@ Health checks configurados:
 
 ### Containers e aplicacao
 
-O ECS usa Fargate para evitar administracao de instancias EC2.
+O ECS usa Fargate para evitar administracao de instancias EC2. As services rodam em subnets publicas com `assign_public_ip = true`, mas o acesso de entrada continua restrito ao security group do ALB.
 
 - **Backend**
   - Porta esperada: `8080`
@@ -262,6 +262,15 @@ Substitua `<caminho-do-backend>` e `<caminho-do-frontend>` pelos diretorios reai
 
 Preencha `backend_image` e `frontend_image` com as URLs finais do ECR.
 
+Exemplo:
+
+```hcl
+backend_image  = "372172764529.dkr.ecr.us-east-1.amazonaws.com/mindshelf-backend:latest"
+frontend_image = "372172764529.dkr.ecr.us-east-1.amazonaws.com/mindshelf-frontend:latest"
+```
+
+Importante: enviar uma imagem nova para o ECR nao altera sozinho o que o ECS executa. A task definition precisa apontar para a imagem correta e a service precisa ser redeployada.
+
 #### 7) Validar o plano
 
 ```bash
@@ -331,6 +340,8 @@ terraform output ecr_frontend_url
 
 Os valores padrao `nginx:latest` em `backend_image` e `frontend_image` servem apenas como placeholder. Eles **nao** combinam com as portas e health checks esperados por esta stack. Para um deploy funcional, use imagens reais da aplicacao.
 
+Se a task definition ainda estiver apontando para `nginx:latest`, um novo `docker push` no ECR nao resolve: o ECS continuara subindo nginx ate que `backend_image` e `frontend_image` sejam atualizados e aplicados.
+
 ### 2. Porta do backend
 
 Em `ecs.tf`, o container do backend esta definido com `containerPort = 8080`. Se voce mudar `backend_port`, mantenha a task definition alinhada com a porta exposta pela aplicacao.
@@ -364,8 +375,10 @@ Mesmo em ambiente pequeno, alguns recursos geram custo continuo:
 ### ECS service nao estabiliza
 
 - confira se `backend_image` e `frontend_image` apontam para imagens validas
+- confirme na task definition ativa se a imagem nao esta como `nginx:latest`
 - valide se o frontend responde na porta `frontend_port`
 - valide se o backend responde na porta `8080` e no endpoint `/health`
+- se voce so reenviou a imagem para o ECR, faca tambem o redeploy da service ou rode `terraform apply` para publicar uma nova task definition
 - veja logs no CloudWatch
 
 ### Backend nao conecta no banco
