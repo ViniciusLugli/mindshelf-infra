@@ -19,6 +19,11 @@ Esta stack cria os seguintes componentes na AWS:
 - **AWS Certificate Manager (ACM)** para certificado TLS com validacao via DNS.
 - **CloudWatch Logs** para logs dos containers.
 
+### Links para o repositório
+
+- [Github]("https://github.com/ViniciusLugli/mindshelf-infra")
+- [Bitbucket]("https://bitbucket.org/viniciuslugli/mindshelf-infra/src/main/")
+
 ## Arquitetura
 
 ```text
