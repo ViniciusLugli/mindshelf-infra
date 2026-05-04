@@ -156,8 +156,8 @@ Estas variaveis devem ser definidas no `terraform.tfvars` ou por `-var`:
 | ---------------------------- | -------------- | -------------------------------------------------------------------------------------- |
 | `aws_region`                 | `us-east-1`    | Regiao AWS usada no deploy.                                                            |
 | `project_name`               | `meu-projeto`  | Prefixo usado nos nomes dos recursos.                                                  |
-| `backend_image`              | `nginx:latest` | Imagem do backend. Deve ser substituida por uma imagem real antes do deploy completo.  |
-| `frontend_image`             | `nginx:latest` | Imagem do frontend. Deve ser substituida por uma imagem real antes do deploy completo. |
+| `backend_image`              | `null`         | Override opcional da imagem do backend. Se vazio, usa a ultima imagem publicada no ECR e cai para `nginx:latest` como fallback. |
+| `frontend_image`             | `null`         | Override opcional da imagem do frontend. Se vazio, usa a ultima imagem publicada no ECR e cai para `nginx:latest` como fallback. |
 | `backend_port`               | `8080`         | Porta publicada pelo backend.                                                          |
 | `frontend_port`              | `3000`         | Porta publicada pelo frontend.                                                         |
 | `backend_task_cpu`           | `512`          | CPU da task do backend no Fargate.                                                     |
@@ -187,9 +187,6 @@ Nao versione este arquivo com valores reais.
 aws_region              = "us-east-1"
 project_name            = "project"
 domain_name             = "seudominio.com"
-
-backend_image           = "<aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/project-backend:latest"
-frontend_image          = "<aws-account-id>.dkr.ecr.us-east-1.amazonaws.com/project-frontend:latest"
 
 backend_port            = 8080
 frontend_port           = 3000
@@ -263,32 +260,25 @@ docker push <ecr_frontend_url>:latest
 
 Substitua `<caminho-do-backend>` e `<caminho-do-frontend>` pelos diretorios reais onde vivem as aplicacoes.
 
-#### 6) Atualizar o `terraform.tfvars`
+#### 6) Validar o plano
 
-Preencha `backend_image` e `frontend_image` com as URLs finais do ECR.
+Depois que houver pelo menos uma imagem em cada repositorio, o Terraform passa a resolver automaticamente a ultima imagem publicada no ECR para frontend e backend.
 
-Exemplo:
+Se precisar fixar uma imagem manualmente, preencha `backend_image` e `frontend_image` no `terraform.tfvars` com o valor desejado.
 
-```hcl
-backend_image  = "372172764529.dkr.ecr.us-east-1.amazonaws.com/mindshelf-backend:latest"
-frontend_image = "372172764529.dkr.ecr.us-east-1.amazonaws.com/mindshelf-frontend:latest"
-```
-
-Importante: enviar uma imagem nova para o ECR nao altera sozinho o que o ECS executa. A task definition precisa apontar para a imagem correta e a service precisa ser redeployada.
-
-#### 7) Validar o plano
+Importante: enviar uma imagem nova para o ECR nao altera sozinho o que o ECS executa. Rode `terraform apply` para publicar uma nova task definition com o digest mais recente.
 
 ```bash
 terraform plan
 ```
 
-#### 8) Aplicar a stack completa
+#### 7) Aplicar a stack completa
 
 ```bash
 terraform apply
 ```
 
-#### 9) Delegar o dominio no registrador
+#### 8) Delegar o dominio no registrador
 
 Depois do `apply`, pegue os nameservers:
 
@@ -307,6 +297,8 @@ terraform plan
 terraform apply
 terraform destroy
 ```
+
+Observacao: `terraform destroy` agora falha de proposito para os recursos persistentes protegidos (`ECR`, `RDS`, senha e parametros SSM do backend). Para desmontar apenas a parte stateless da stack, remova esses recursos do state com `terraform state rm ...` ou use destroy direcionado.
 
 Ver outputs:
 
@@ -343,9 +335,9 @@ terraform output ecr_frontend_url
 
 ### 1. Imagens placeholder
 
-Os valores padrao `nginx:latest` em `backend_image` e `frontend_image` servem apenas como placeholder. Eles **nao** combinam com as portas e health checks esperados por esta stack. Para um deploy funcional, use imagens reais da aplicacao.
+O fallback `nginx:latest` existe apenas para bootstrap quando o repositorio ECR ainda esta vazio ou a consulta da ultima imagem falha. Ele **nao** combina com as portas e health checks esperados por esta stack. Para um deploy funcional, use imagens reais da aplicacao.
 
-Se a task definition ainda estiver apontando para `nginx:latest`, um novo `docker push` no ECR nao resolve: o ECS continuara subindo nginx ate que `backend_image` e `frontend_image` sejam atualizados e aplicados.
+Se a task definition ainda estiver apontando para `nginx:latest`, um novo `docker push` no ECR nao resolve sozinho: rode `terraform apply` para que o ECS passe a usar o digest mais recente.
 
 ### 2. Porta do backend
 
@@ -379,11 +371,11 @@ Mesmo em ambiente pequeno, alguns recursos geram custo continuo:
 
 ### ECS service nao estabiliza
 
-- confira se `backend_image` e `frontend_image` apontam para imagens validas
+- confira se o ECR ja tem ao menos uma imagem publicada para frontend e backend
 - confirme na task definition ativa se a imagem nao esta como `nginx:latest`
 - valide se o frontend responde na porta `frontend_port`
 - valide se o backend responde na porta `8080` e no endpoint `/health`
-- se voce so reenviou a imagem para o ECR, faca tambem o redeploy da service ou rode `terraform apply` para publicar uma nova task definition
+- se voce so reenviou a imagem para o ECR, rode `terraform apply` para publicar uma nova task definition com o digest mais recente
 - veja logs no CloudWatch
 
 ### Backend nao conecta no banco

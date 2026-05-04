@@ -11,13 +11,17 @@ variable "domain_name" {
 }
 
 variable "backend_image" {
-  description = "URI inicial da imagem do backend"
-  default     = "nginx:latest" # placeholder até o primeiro deploy
+  description = "Override opcional da imagem do backend. Se nulo, tenta a ultima imagem publicada no ECR e cai para nginx:latest como fallback."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "frontend_image" {
-  description = "URI inicial da imagem do frontend"
-  default     = "nginx:latest" # placeholder até o primeiro deploy
+  description = "Override opcional da imagem do frontend. Se nulo, tenta a ultima imagem publicada no ECR e cai para nginx:latest como fallback."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 variable "backend_port" {

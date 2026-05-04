@@ -2,6 +2,34 @@ resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 }
 
+data "external" "backend_latest_image" {
+  depends_on = [aws_ecr_repository.backend]
+  program    = ["python", "${path.module}/scripts/get_latest_ecr_digest.py"]
+
+  query = {
+    repository_name = aws_ecr_repository.backend.name
+    region          = var.aws_region
+  }
+}
+
+data "external" "frontend_latest_image" {
+  depends_on = [aws_ecr_repository.frontend]
+  program    = ["python", "${path.module}/scripts/get_latest_ecr_digest.py"]
+
+  query = {
+    repository_name = aws_ecr_repository.frontend.name
+    region          = var.aws_region
+  }
+}
+
+locals {
+  backend_ecr_image  = data.external.backend_latest_image.result.image_digest != "" ? "${aws_ecr_repository.backend.repository_url}@${data.external.backend_latest_image.result.image_digest}" : null
+  frontend_ecr_image = data.external.frontend_latest_image.result.image_digest != "" ? "${aws_ecr_repository.frontend.repository_url}@${data.external.frontend_latest_image.result.image_digest}" : null
+
+  backend_container_image  = coalesce(var.backend_image, local.backend_ecr_image, "nginx:latest")
+  frontend_container_image = coalesce(var.frontend_image, local.frontend_ecr_image, "nginx:latest")
+}
+
 # ─── BACKEND ───────────────────────────────────────────
 
 resource "aws_ecs_task_definition" "backend" {
@@ -15,7 +43,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([{
     name      = "backend"
-    image     = var.backend_image
+    image     = local.backend_container_image
     essential = true
 
     portMappings = [{
@@ -102,7 +130,7 @@ resource "aws_ecs_task_definition" "frontend" {
 
   container_definitions = jsonencode([{
     name      = "frontend"
-    image     = var.frontend_image
+    image     = local.frontend_container_image
     essential = true
 
     portMappings = [{
