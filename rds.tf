@@ -1,10 +1,6 @@
 resource "random_password" "postgres_password" {
   length  = 24
   special = false
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_db_subnet_group" "postgres" {
@@ -13,10 +9,6 @@ resource "aws_db_subnet_group" "postgres" {
 
   tags = {
     Name = "${var.project_name}-postgres-subnet-group"
-  }
-
-  lifecycle {
-    prevent_destroy = true
   }
 }
 
@@ -42,10 +34,6 @@ resource "aws_security_group" "rds_postgres" {
 
   tags = {
     Name = "${var.project_name}-rds-postgres-sg"
-  }
-
-  lifecycle {
-    prevent_destroy = true
   }
 }
 
@@ -81,10 +69,6 @@ resource "aws_db_instance" "postgres" {
   tags = {
     Name = "${var.project_name}-postgres"
   }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 locals {
@@ -100,10 +84,6 @@ resource "aws_ssm_parameter" "backend_database_url" {
   description = "DATABASE_URL do backend"
   type        = "SecureString"
   value       = local.database_url
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_ssm_parameter" "backend_dsn" {
@@ -111,10 +91,6 @@ resource "aws_ssm_parameter" "backend_dsn" {
   description = "DSN do backend"
   type        = "SecureString"
   value       = local.dsn
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_ssm_parameter" "backend_jwt_secret" {
@@ -122,10 +98,6 @@ resource "aws_ssm_parameter" "backend_jwt_secret" {
   description = "JWT_SECRET do backend"
   type        = "SecureString"
   value       = var.backend_jwt_secret
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_ssm_parameter" "backend_db_host" {
@@ -133,10 +105,6 @@ resource "aws_ssm_parameter" "backend_db_host" {
   description = "Host do banco"
   type        = "String"
   value       = local.postgres_host
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "aws_ssm_parameter" "backend_db_port" {
@@ -144,8 +112,4 @@ resource "aws_ssm_parameter" "backend_db_port" {
   description = "Porta do banco"
   type        = "String"
   value       = tostring(local.postgres_port)
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
